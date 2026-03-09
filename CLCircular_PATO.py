@@ -32,8 +32,8 @@ import os
 import streamlit as st
 
 ### Carga Data Market Size Categorías
-df_mst = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/db1_internacional_pharma.xlsx', 'Mkt.Size', header = 5)
-df_mst.head()
+df_mst = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/db1_internacional_pharma.xlsx', 'Mkt.Size', header = 5)
+df_mst.tail()
 
 ### Limpieza y proceso de Data
 df_mst.isnull().sum()
