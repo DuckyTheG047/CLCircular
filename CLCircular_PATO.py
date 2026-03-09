@@ -32,7 +32,7 @@ import os
 import streamlit as st
 
 ### Carga Data Market Size Categorías
-df_mst = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/db1_internacional_pharma.xlsx', 'Mkt.Size', header = 5)
+df_mst = pd.read_excel('CLCircular - Datos/Code/db1_internacional_pharma.xlsx', 'Mkt.Size', header = 5)
 df_mst.tail()
 
 ### Limpieza y proceso de Data
@@ -734,7 +734,7 @@ plt.tight_layout()
 plt.show()
 ### ____________________________________
 ### Importaciones específicas
-us_imports = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Exports---November-2025-Click-on-the-Visualization-to-Select.xlsx')
+us_imports = pd.read_excel('CLCircular - Datos/Code/Exports---November-2025-Click-on-the-Visualization-to-Select.xlsx')
 us_imports.head()
 print(us_imports.columns)
 
@@ -776,209 +776,9 @@ def is_pharma(text):
 # Aplicar filtro
 pharma_df = us_imports[us_imports["HS4 4 Digit"].apply(is_pharma)]
 
-pharma_df[['Year', 'Chapter 4 Digit', 'HS2 4 Digit', 'HS4 4 Digit', 'Trade Value', 'Share']]
+pharma_df = pharma_df[['Year', 'Chapter 4 Digit', 'HS2 4 Digit', 'HS4 4 Digit', 'Trade Value', 'Share']]
+
+pharma_df.head()
 
 
 
-
-
-st.set_page_config(
-    page_title="Dashboard Pharma Market Size",
-    layout="wide"
-)
-
-st.title("Dashboard interactivo - Pharma Market Size")
-st.markdown("Filtra por país y categoría para explorar la evolución del valor de mercado.")
-
-# ---------------------------
-# Carga de datos
-# ---------------------------
-file = '/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/db1_internacional_pharma.xlsx'
-@st.cache_data
-def load_data(file):
-    df = pd.read_excel(file, sheet_name="Mkt.Size", header=5)
-    return df
-
-uploaded_file = st.file_uploader(
-    "Sube el archivo Excel de market size",
-    type=["xlsx"]
-)
-
-if uploaded_file is None:
-    st.info("Sube el archivo `db1_internacional_pharma.xlsx` para visualizar el dashboard.")
-    st.stop()
-
-df_mst = load_data(uploaded_file)
-
-# ---------------------------
-# Limpieza y transformación
-# ---------------------------
-df_mst = df_mst.dropna().copy()
-
-years = [str(year) for year in range(2011, 2026)]
-
-df_long = df_mst.melt(
-    id_vars=["Geography", "Category", "Data Type", "Unit", "Current Constant"],
-    value_vars=years,
-    var_name="Year",
-    value_name="Value"
-)
-
-df_long["Year"] = pd.to_numeric(df_long["Year"], errors="coerce")
-df_long["Value"] = pd.to_numeric(df_long["Value"], errors="coerce")
-
-# Conversión MXN million -> USD million
-df_long["Value"] = np.where(
-    df_long["Unit"].eq("MXN million"),
-    df_long["Value"] / 17.7,
-    df_long["Value"]
-)
-
-df_long["Unit"] = "Million USD"
-
-df_long = df_long.dropna(subset=["Year", "Value", "Geography", "Category"]).copy()
-df_long["Year"] = df_long["Year"].astype(int)
-
-# ---------------------------
-# Sidebar filtros
-# ---------------------------
-st.sidebar.header("Filtros")
-
-all_geographies = sorted(df_long["Geography"].unique().tolist())
-all_categories = sorted(df_long["Category"].unique().tolist())
-
-selected_geographies = st.sidebar.multiselect(
-    "Selecciona país / geografía",
-    options=all_geographies,
-    default=["Mexico", "USA"] if all(x in all_geographies for x in ["Mexico", "USA"]) else all_geographies[:2]
-)
-
-selected_categories = st.sidebar.multiselect(
-    "Selecciona categoría",
-    options=all_categories,
-    default=[
-        c for c in [
-            "OTC",
-            "Sports Nutrition",
-            "Vitamins and Dietary Supplements",
-            "Weight Management and Wellbeing",
-            "Herbal/Traditional Products",
-            "Allergy Care"
-        ] if c in all_categories
-    ] or all_categories[:6]
-)
-
-year_range = st.sidebar.slider(
-    "Rango de años",
-    min_value=int(df_long["Year"].min()),
-    max_value=int(df_long["Year"].max()),
-    value=(int(df_long["Year"].min()), int(df_long["Year"].max()))
-)
-
-# ---------------------------
-# Filtrado
-# ---------------------------
-df_filtered = df_long[
-    (df_long["Geography"].isin(selected_geographies)) &
-    (df_long["Category"].isin(selected_categories)) &
-    (df_long["Year"].between(year_range[0], year_range[1]))
-].copy()
-
-if df_filtered.empty:
-    st.warning("No hay datos para la combinación de filtros seleccionada.")
-    st.stop()
-
-# ---------------------------
-# KPIs
-# ---------------------------
-col1, col2, col3, col4 = st.columns(4)
-
-col1.metric("Registros", f"{len(df_filtered):,}")
-col2.metric("Categorías", df_filtered["Category"].nunique())
-col3.metric("Geografías", df_filtered["Geography"].nunique())
-col4.metric("Valor total", f"{df_filtered['Value'].sum():,.2f} {df_filtered['Unit'].iloc[0]}")
-
-# ---------------------------
-# Gráfica principal
-# Basada en la lógica de Year vs Value con hue=Category
-# ---------------------------
-st.subheader("Evolución del valor por categoría")
-
-plot_mode = st.radio(
-    "Modo de visualización",
-    ["Colorear por categoría", "Colorear por país"],
-    horizontal=True
-)
-
-fig, ax = plt.subplots(figsize=(14, 7))
-
-if plot_mode == "Colorear por categoría":
-    sns.lineplot(
-        data=df_filtered,
-        x="Year",
-        y="Value",
-        hue="Category",
-        style="Geography",
-        marker="o",
-        ax=ax
-    )
-else:
-    sns.lineplot(
-        data=df_filtered,
-        x="Year",
-        y="Value",
-        hue="Geography",
-        style="Category",
-        marker="o",
-        ax=ax
-    )
-
-ax.set_title("Evolución del Valor por Categoría")
-ax.set_xlabel("Año")
-ax.set_ylabel("Valor (Million USD)")
-ax.grid(True, alpha=0.3)
-ax.set_xticks(sorted(df_filtered["Year"].unique()))
-plt.xticks(rotation=45)
-ax.legend(bbox_to_anchor=(1.02, 1), loc="upper left")
-plt.tight_layout()
-
-st.pyplot(fig)
-
-# ---------------------------
-# Tabla resumen
-# ---------------------------
-st.subheader("Tabla resumen")
-
-summary = (
-    df_filtered.groupby(["Geography", "Category", "Year"], as_index=False)["Value"]
-    .sum()
-    .sort_values(["Geography", "Category", "Year"])
-)
-
-st.dataframe(summary, use_container_width=True)
-
-# ---------------------------
-# Tabla pivote
-# ---------------------------
-st.subheader("Tabla pivote")
-
-pivot_table = summary.pivot_table(
-    index=["Geography", "Category"],
-    columns="Year",
-    values="Value",
-    aggfunc="sum"
-)
-
-st.dataframe(pivot_table, use_container_width=True)
-
-# ---------------------------
-# Descarga
-# ---------------------------
-csv_data = summary.to_csv(index=False).encode("utf-8")
-
-st.download_button(
-    label="Descargar datos filtrados (CSV)",
-    data=csv_data,
-    file_name="market_size_filtrado.csv",
-    mime="text/csv"
-)
