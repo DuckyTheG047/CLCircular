@@ -30,6 +30,7 @@ from semopy import Model, Optimizer, calc_stats
 import openpyxl
 import os
 import streamlit as st
+import plotly.express as px
 
 ### Carga Data Market Size Categorías
 df_mst = pd.read_excel('CLCircular - Datos/Code/db1_internacional_pharma.xlsx', 'Mkt.Size', header = 5)
@@ -734,11 +735,19 @@ plt.tight_layout()
 plt.show()
 ### ____________________________________
 ### Importaciones específicas
-us_imports = pd.read_excel('CLCircular - Datos/Code/Exports---November-2025-Click-on-the-Visualization-to-Select.xlsx')
+us_imports = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/exportaciones_farmaceuticas_identificadas.xlsx')
 us_imports.head()
 print(us_imports.columns)
 
 us_imports["HS4 4 Digit"] = us_imports["HS4 4 Digit"].astype(str).str.lower()
+
+# Tabla de valores únicos HS4 4 Digit
+hs4_unique_table = pd.DataFrame({
+    "HS4 4 Digit": sorted(us_imports["HS4 4 Digit"].dropna().unique())
+})
+hs4_unique_table["ID"] = range(1, len(hs4_unique_table) + 1)
+hs4_unique_table = hs4_unique_table[["ID", "HS4 4 Digit"]]
+print(hs4_unique_table)
 
 # Palabras clave relacionadas con la industria farmacéutica
 keywords = [
@@ -779,6 +788,3 @@ pharma_df = us_imports[us_imports["HS4 4 Digit"].apply(is_pharma)]
 pharma_df = pharma_df[['Year', 'Chapter 4 Digit', 'HS2 4 Digit', 'HS4 4 Digit', 'Trade Value', 'Share']]
 
 pharma_df.head()
-
-
-
