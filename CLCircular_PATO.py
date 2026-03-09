@@ -735,56 +735,53 @@ plt.tight_layout()
 plt.show()
 ### ____________________________________
 ### Importaciones específicas
-us_imports = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/exportaciones_farmaceuticas_identificadas.xlsx')
+us_imports = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/exportaciones_farmaceuticas_identificadas.xlsx')
 us_imports.head()
-print(us_imports.columns)
 
-us_imports["HS4 4 Digit"] = us_imports["HS4 4 Digit"].astype(str).str.lower()
+us_imports['HS4 4 Digit'].unique()
 
-# Tabla de valores únicos HS4 4 Digit
 hs4_unique_table = pd.DataFrame({
-    "HS4 4 Digit": sorted(us_imports["HS4 4 Digit"].dropna().unique())
+    "HS4 4 Digit": sorted(us_imports["HS4 4 Digit"].unique())
 })
 hs4_unique_table["ID"] = range(1, len(hs4_unique_table) + 1)
 hs4_unique_table = hs4_unique_table[["ID", "HS4 4 Digit"]]
-print(hs4_unique_table)
 
-# Palabras clave relacionadas con la industria farmacéutica
-keywords = [
-    "pharmaceutical",
-    "medicament",
-    "medicine",
-    "drug",
-    "vaccine",
-    "antibiotic",
-    "vitamin",
-    "hormone",
-    "enzyme",
-    "alkaloid",
-    "culture",
-    "diagnostic",
-    "laboratory",
-    "reagent",
-    "blood",
-    "organ",
-    "therapeutic",
-    "medical",
-    "surgical",
-    "dental",
-    "hospital",
-    "bandage",
-    "gauze",
-    "x-ray",
-    "respiration",
-    "therapy"
+hs4_unique_table.tail()
+
+plantas_80 = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/empresas_con_plantas_en_mexico_y_exportadores_MX_USA.xlsx', 'Producto_80', header = 3)
+plantas_80.head()
+
+plantas_20 = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/empresas_con_plantas_en_mexico_y_exportadores_MX_USA.xlsx', 'Exportadores_20', header = 3)
+plantas_20.head()
+
+integrado_u = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/empresas_con_plantas_en_mexico_y_exportadores_MX_USA.xlsx', 'Integrado_unico', header = 3)
+integrado_u.head()
+
+em_int = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/exportaciones_equipo_medico_empresas_sectores_urls.xlsx')
+em_int.tail()
+
+market_share_empresas_raw = [
+    11.0,  # Medtronic
+    9.0,   # GE HealthCare
+    8.5,   # Siemens Healthineers
+    7.0,   # Philips Healthcare
+    8.0,   # Abbott
+    6.5,   # Johnson & Johnson MedTech
+    5.5,   # Stryker
+    5.5,   # Becton Dickinson
+    4.5,   # Boston Scientific
+    3.5,   # 3M Health Care
+    3.5,   # Cardinal Health
+    4.5,   # Thermo Fisher Scientific
+    3.5,   # Fresenius Medical Care
+    3.5,   # Zimmer Biomet
+    3.5,   # Baxter International
+    2.5,   # Hologic
+    2.5,   # Intuitive Surgical
+    2.5,   # Danaher
+    1.5,   # ResMed
+    2.5    # Olympus Medical
 ]
 
-def is_pharma(text):
-    return any(keyword in text for keyword in keywords)
-
-# Aplicar filtro
-pharma_df = us_imports[us_imports["HS4 4 Digit"].apply(is_pharma)]
-
-pharma_df = pharma_df[['Year', 'Chapter 4 Digit', 'HS2 4 Digit', 'HS4 4 Digit', 'Trade Value', 'Share']]
-
-pharma_df.head()
+market_share_total = sum(market_share_empresas_raw)
+market_share_empresas = [value * (100.0 / market_share_total) for value in market_share_empresas_raw]
