@@ -794,7 +794,18 @@ market_share_empresas_raw = [
 market_share_total = sum(market_share_empresas_raw)
 market_share_empresas = [value * (100.0 / market_share_total) for value in market_share_empresas_raw]
 
-df_hubs = pd.read_excel(DATA_ROOT / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx')
+_hubs_candidates = [
+    BASE_DIR / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx',
+    DATA_ROOT / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx',
+    DATA_ROOT / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico.xlsx'
+]
+_hubs_path = next((p for p in _hubs_candidates if p.exists()), None)
+if _hubs_path is None:
+    raise FileNotFoundError(
+        "No se encontró el archivo de hubs en rutas esperadas: "
+        + ", ".join(str(p) for p in _hubs_candidates)
+    )
+df_hubs = pd.read_excel(_hubs_path)
 df_hubs
 
 df_el_mexico = pd.DataFrame([

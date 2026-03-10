@@ -830,8 +830,13 @@ with tab_exporta:
         us_imports = pd.read_excel(base_dir / 'exportaciones_farmaceuticas_identificadas.xlsx')
         em_int = pd.read_excel(base_dir / 'exportaciones_equipo_medico_empresas_sectores_urls.xlsx')
         df_estado_heat = build_df_estado_heatmap(str(base_dir))
-        hubs_file = base_dir.parent / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx'
-        df_hubs = pd.read_excel(hubs_file) if hubs_file.exists() else pd.DataFrame()
+        hubs_candidates = [
+            base_dir / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx',
+            base_dir.parent / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx',
+            base_dir.parent / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico.xlsx'
+        ]
+        hubs_file = next((p for p in hubs_candidates if p.exists()), None)
+        df_hubs = pd.read_excel(hubs_file) if hubs_file is not None else pd.DataFrame()
         df_el_mexico = pd.DataFrame([
             {"empresa": "World Courier", "hub_mexico": "Tlalnepantla (Estado de México)", "latitud": 19.5407, "longitud": -99.1950},
             {"empresa": "Biocair", "hub_mexico": "Ciudad de México", "latitud": 19.4326, "longitud": -99.1332},
