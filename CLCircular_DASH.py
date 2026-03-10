@@ -93,7 +93,15 @@ def normalize_state_name(name: str) -> str:
 @st.cache_data(show_spinner=False)
 def build_df_estado_heatmap(base_dir_str: str) -> pd.DataFrame:
     base_dir = Path(base_dir_str)
-    delitos_dir = base_dir.parent / 'Municipal-Delitos-2015-2025_ene2026'
+    delitos_dir_candidates = [
+        base_dir.parent / 'Municipal-Delitos-2015-2025_ene2026',
+        base_dir / 'Municipal-Delitos-2015-2025_ene2026',
+        base_dir.parent.parent / 'Municipal-Delitos-2015-2025_ene2026'
+    ]
+    delitos_dir = next((p for p in delitos_dir_candidates if p.exists() and p.is_dir()), None)
+    if delitos_dir is None:
+        return pd.DataFrame(columns=['Entidad', 'estado_key', 'Promedio_anual_delitos'])
+
     file_names = [
         '2015.xlsx', '2016.xlsx', '2017.xlsx', '2018.xlsx', '2019.xlsx',
         '2020.xlsx', '2021.xlsx', '2022.xlsx', '2023.xlsx',
@@ -1436,6 +1444,8 @@ with tab_exporta:
                         value=True,
                         key="show_risk_heat_layer_map"
                     )
+                    if show_risk_heat_layer and df_estado_heat.empty:
+                        st.caption("Sin datos de riesgo: revisa carpeta Municipal-Delitos-2015-2025_ene2026")
                     show_empresas_plantas_points = st.toggle(
                         "Mostrar empresas y plantas",
                         value=True,
