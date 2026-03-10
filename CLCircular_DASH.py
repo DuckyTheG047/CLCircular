@@ -105,28 +105,60 @@ def resolve_data_file(base_dir: Path, filename: str):
 @st.cache_data(show_spinner=False)
 def load_origin_exports(base_dir_str: str) -> pd.DataFrame:
     base_dir = Path(base_dir_str)
-    dir_candidates = [
+    direct_candidates = [
         base_dir / "Origen exports",
         base_dir / "Origen Exports",
+        base_dir / "Code" / "Origen exports",
+        base_dir / "Code" / "Origen Exports",
         base_dir.parent / "Origen exports",
         base_dir.parent / "Origen Exports",
+        base_dir.parent / "Code" / "Origen exports",
+        base_dir.parent / "Code" / "Origen Exports",
         Path.cwd() / "Origen exports",
         Path.cwd() / "Origen Exports",
+        Path.cwd() / "Code" / "Origen exports",
+        Path.cwd() / "Code" / "Origen Exports",
     ]
-    origin_dir = next((p for p in dir_candidates if p.exists() and p.is_dir()), None)
-    if origin_dir is None:
+
+    origin_dirs = [p for p in direct_candidates if p.exists() and p.is_dir()]
+
+    if not origin_dirs:
+        # Fallback robusto para despliegues donde cambia el cwd/base_dir.
+        search_roots = [base_dir, base_dir.parent, Path.cwd()]
+        seen = set()
+        for root in search_roots:
+            if root in seen or not root.exists():
+                continue
+            seen.add(root)
+            for p in root.rglob("*"):
+                if p.is_dir() and p.name.strip().lower() == "origen exports":
+                    origin_dirs.append(p)
+        # Evita duplicados conservando orden.
+        origin_dirs = list(dict.fromkeys(origin_dirs))
+
+    if not origin_dirs:
         return pd.DataFrame()
 
-    files = sorted(list(origin_dir.glob("*.xlsx")) + list(origin_dir.glob("*.csv")))
+    files = []
+    for origin_dir in origin_dirs:
+        files.extend(sorted(list(origin_dir.glob("*.xlsx")) + list(origin_dir.glob("*.csv"))))
+    files = list(dict.fromkeys(files))
     if not files:
         return pd.DataFrame()
 
     dfs = []
     for file_path in files:
-        if file_path.suffix.lower() == ".xlsx":
-            dfs.append(pd.read_excel(file_path))
-        else:
-            dfs.append(pd.read_csv(file_path))
+        try:
+            if file_path.suffix.lower() == ".xlsx":
+                dfs.append(pd.read_excel(file_path))
+            else:
+                try:
+                    dfs.append(pd.read_csv(file_path))
+                except UnicodeDecodeError:
+                    dfs.append(pd.read_csv(file_path, encoding="latin-1"))
+        except Exception:
+            # Si un archivo falla, continúa con el resto para no romper el dashboard.
+            continue
 
     return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
 
@@ -1654,6 +1686,8 @@ with tab_exporta:
                     st.plotly_chart(fig_state_trend, use_container_width=True)
                 else:
                     st.info("No hay datos suficientes para la evolución mensual por estado.")
+                    if df_origin_exports.empty:
+                        st.caption("`df_origin_exports` está vacío. Verifica que la carpeta `Origen exports` y sus archivos estén incluidos en el repositorio.")
             with col_exports_bar:
                 st.plotly_chart(fig_exports, use_container_width=True)
 
