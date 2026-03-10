@@ -29,14 +29,18 @@ import itertools
 from semopy import Model, Optimizer, calc_stats
 import openpyxl
 import os
+from pathlib import Path
 import streamlit as st
 import plotly.express as px
 import glob
 from sklearn.tree import DecisionTreeRegressor
 import plotly.graph_objects as go
 
+BASE_DIR = Path(__file__).resolve().parent
+DATA_ROOT = BASE_DIR.parent
+
 ### Carga Data Market Size Categorías
-df_mst = pd.read_excel('CLCircular - Datos/Code/db1_internacional_pharma.xlsx', 'Mkt.Size', header = 5)
+df_mst = pd.read_excel(BASE_DIR / 'db1_internacional_pharma.xlsx', 'Mkt.Size', header = 5)
 df_mst.tail()
 
 ### Limpieza y proceso de Data
@@ -738,7 +742,7 @@ plt.tight_layout()
 plt.show()
 ### ____________________________________
 ### Importaciones específicas
-us_imports = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/exportaciones_farmaceuticas_identificadas.xlsx')
+us_imports = pd.read_excel(BASE_DIR / 'exportaciones_farmaceuticas_identificadas.xlsx')
 us_imports.head()
 
 us_imports['HS4 4 Digit'].unique()
@@ -751,16 +755,17 @@ hs4_unique_table = hs4_unique_table[["ID", "HS4 4 Digit"]]
 
 hs4_unique_table.tail()
 
-plantas_80 = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/empresas_con_plantas_en_mexico_y_exportadores_MX_USA.xlsx', 'Producto_80', header = 3)
+plantas_file = BASE_DIR / 'empresas_con_plantas_en_mexico_y_exportadores_MX_USA.xlsx'
+plantas_80 = pd.read_excel(plantas_file, 'Producto_80', header = 3)
 plantas_80.head()
 
-plantas_20 = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/empresas_con_plantas_en_mexico_y_exportadores_MX_USA.xlsx', 'Exportadores_20', header = 3)
+plantas_20 = pd.read_excel(plantas_file, 'Exportadores_20', header = 3)
 plantas_20.head()
 
-integrado_u = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/empresas_con_plantas_en_mexico_y_exportadores_MX_USA.xlsx', 'Integrado_unico', header = 3)
+integrado_u = pd.read_excel(plantas_file, 'Integrado_unico', header = 3)
 integrado_u.head()
 
-em_int = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Code/exportaciones_equipo_medico_empresas_sectores_urls.xlsx')
+em_int = pd.read_excel(BASE_DIR / 'exportaciones_equipo_medico_empresas_sectores_urls.xlsx')
 em_int.tail()
 
 market_share_empresas_raw = [
@@ -789,7 +794,7 @@ market_share_empresas_raw = [
 market_share_total = sum(market_share_empresas_raw)
 market_share_empresas = [value * (100.0 / market_share_total) for value in market_share_empresas_raw]
 
-df_hubs = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx')
+df_hubs = pd.read_excel(DATA_ROOT / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx')
 df_hubs
 
 df_el_mexico = pd.DataFrame([
@@ -807,10 +812,12 @@ df_el_mexico = pd.DataFrame([
 
 print(df_el_mexico)
 
+delitos_dir = DATA_ROOT / 'Municipal-Delitos-2015-2025_ene2026'
 files = [
-'/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2015.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2016.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2017.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2018.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2019.xlsx',
-'/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2020.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2021.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2022.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2023.xlsx',
-'/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2024_ene2026.xlsx', '/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2025_ene2026.xlsx'
+    delitos_dir / '2015.xlsx', delitos_dir / '2016.xlsx', delitos_dir / '2017.xlsx',
+    delitos_dir / '2018.xlsx', delitos_dir / '2019.xlsx', delitos_dir / '2020.xlsx',
+    delitos_dir / '2021.xlsx', delitos_dir / '2022.xlsx', delitos_dir / '2023.xlsx',
+    delitos_dir / '2024_ene2026.xlsx', delitos_dir / '2025_ene2026.xlsx'
 ]
 
 dfs = []
