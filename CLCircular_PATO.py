@@ -823,13 +823,29 @@ df_el_mexico = pd.DataFrame([
 
 print(df_el_mexico)
 
-delitos_dir = DATA_ROOT / 'Municipal-Delitos-2015-2025_ene2026'
+delitos_dir_candidates = [
+    DATA_ROOT / 'Municipal-Delitos-2015-2025_ene2026',
+    BASE_DIR / 'Municipal-Delitos-2015-2025_ene2026',
+    BASE_DIR.parent.parent / 'Municipal-Delitos-2015-2025_ene2026'
+]
+delitos_dir = next((p for p in delitos_dir_candidates if p.exists() and p.is_dir()), None)
+if delitos_dir is None:
+    raise FileNotFoundError(
+        "No se encontró la carpeta de delitos en rutas esperadas: "
+        + ", ".join(str(p) for p in delitos_dir_candidates)
+    )
+
 files = [
     delitos_dir / '2015.xlsx', delitos_dir / '2016.xlsx', delitos_dir / '2017.xlsx',
     delitos_dir / '2018.xlsx', delitos_dir / '2019.xlsx', delitos_dir / '2020.xlsx',
     delitos_dir / '2021.xlsx', delitos_dir / '2022.xlsx', delitos_dir / '2023.xlsx',
     delitos_dir / '2024_ene2026.xlsx', delitos_dir / '2025_ene2026.xlsx'
 ]
+missing_files = [str(f) for f in files if not f.exists()]
+if missing_files:
+    raise FileNotFoundError(
+        "Faltan archivos de delitos: " + ", ".join(missing_files)
+    )
 
 dfs = []
 
