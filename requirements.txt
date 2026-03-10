@@ -1,0 +1,16 @@
+streamlit
+pandas
+numpy
+plotly
+statsmodels
+scipy
+matplotlib
+seaborn
+linearmodels
+semopy
+scikit-learn
+openpyxl
+xlrd
+patsy
+joblib
+threadpoolctl
