@@ -90,6 +90,18 @@ def normalize_state_name(name: str) -> str:
     return aliases.get(text, text)
 
 
+def resolve_data_file(base_dir: Path, filename: str):
+    candidates = [
+        base_dir / filename,
+        base_dir / 'Code' / filename,
+        base_dir.parent / filename,
+        base_dir.parent / 'Code' / filename,
+        Path.cwd() / filename,
+        Path.cwd() / 'Code' / filename
+    ]
+    return next((p for p in candidates if p.exists()), None)
+
+
 @st.cache_data(show_spinner=False)
 def build_df_estado_heatmap(base_dir_str: str) -> pd.DataFrame:
     base_dir = Path(base_dir_str)
@@ -835,15 +847,27 @@ with tab_exporta:
     st.subheader("¿Qué se exporta?")
     try:
         base_dir = Path(__file__).resolve().parent
-        us_imports = pd.read_excel(base_dir / 'exportaciones_farmaceuticas_identificadas.xlsx')
-        em_int = pd.read_excel(base_dir / 'exportaciones_equipo_medico_empresas_sectores_urls.xlsx')
+        us_imports_path = resolve_data_file(base_dir, 'exportaciones_farmaceuticas_identificadas.xlsx')
+        em_int_path = resolve_data_file(base_dir, 'exportaciones_equipo_medico_empresas_sectores_urls.xlsx')
+        plantas_path = resolve_data_file(base_dir, 'empresas_con_plantas_en_mexico_y_exportadores_MX_USA.xlsx')
+        if us_imports_path is None or em_int_path is None or plantas_path is None:
+            missing = []
+            if us_imports_path is None:
+                missing.append('exportaciones_farmaceuticas_identificadas.xlsx')
+            if em_int_path is None:
+                missing.append('exportaciones_equipo_medico_empresas_sectores_urls.xlsx')
+            if plantas_path is None:
+                missing.append('empresas_con_plantas_en_mexico_y_exportadores_MX_USA.xlsx')
+            raise FileNotFoundError("Archivos faltantes para ¿Qué se exporta?: " + ", ".join(missing))
+
+        us_imports = pd.read_excel(us_imports_path)
+        em_int = pd.read_excel(em_int_path)
         df_estado_heat = build_df_estado_heatmap(str(base_dir))
         hubs_candidates = [
-            base_dir / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx',
-            base_dir.parent / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx',
-            base_dir.parent / 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico.xlsx'
+            resolve_data_file(base_dir, 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx'),
+            resolve_data_file(base_dir, 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico.xlsx')
         ]
-        hubs_file = next((p for p in hubs_candidates if p.exists()), None)
+        hubs_file = next((p for p in hubs_candidates if p is not None and p.exists()), None)
         df_hubs = pd.read_excel(hubs_file) if hubs_file is not None else pd.DataFrame()
         df_el_mexico = pd.DataFrame([
             {"empresa": "World Courier", "hub_mexico": "Tlalnepantla (Estado de México)", "latitud": 19.5407, "longitud": -99.1950},
@@ -865,9 +889,8 @@ with tab_exporta:
         }
         us_imports = us_imports[~us_imports['HS2 4 Digit'].astype(str).isin(hs2_excluded)].copy()
         em_int = em_int[~em_int['HS2 4 Digit'].astype(str).isin(hs2_excluded)].copy()
-        plantas_file = base_dir / 'empresas_con_plantas_en_mexico_y_exportadores_MX_USA.xlsx'
-        plantas_80_raw = pd.read_excel(plantas_file, sheet_name='Producto_80', header=3)
-        plantas_20_raw = pd.read_excel(plantas_file, sheet_name='Exportadores_20', header=3)
+        plantas_80_raw = pd.read_excel(plantas_path, sheet_name='Producto_80', header=3)
+        plantas_20_raw = pd.read_excel(plantas_path, sheet_name='Exportadores_20', header=3)
 
         st.sidebar.markdown("---")
         st.sidebar.subheader("¿Qué se exporta?")
