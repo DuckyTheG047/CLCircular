@@ -1289,3 +1289,17 @@ fig_strategy.update_layout(
     height=650
 )
 fig_strategy.show()
+
+BASE_DIR = Path(__file__).resolve().parent
+origen_exports_dir = BASE_DIR / "Origen exports"   # <- path relativo correcto
+
+archivos = list(origen_exports_dir.glob("*.xlsx")) + list(origen_exports_dir.glob("*.csv"))
+
+dfs = []
+for f in archivos:
+    if f.suffix.lower() == ".xlsx":
+        dfs.append(pd.read_excel(f))
+    else:
+        dfs.append(pd.read_csv(f))
+
+df_origin_exports = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()

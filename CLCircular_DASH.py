@@ -103,6 +103,35 @@ def resolve_data_file(base_dir: Path, filename: str):
 
 
 @st.cache_data(show_spinner=False)
+def load_origin_exports(base_dir_str: str) -> pd.DataFrame:
+    base_dir = Path(base_dir_str)
+    dir_candidates = [
+        base_dir / "Origen exports",
+        base_dir / "Origen Exports",
+        base_dir.parent / "Origen exports",
+        base_dir.parent / "Origen Exports",
+        Path.cwd() / "Origen exports",
+        Path.cwd() / "Origen Exports",
+    ]
+    origin_dir = next((p for p in dir_candidates if p.exists() and p.is_dir()), None)
+    if origin_dir is None:
+        return pd.DataFrame()
+
+    files = sorted(list(origin_dir.glob("*.xlsx")) + list(origin_dir.glob("*.csv")))
+    if not files:
+        return pd.DataFrame()
+
+    dfs = []
+    for file_path in files:
+        if file_path.suffix.lower() == ".xlsx":
+            dfs.append(pd.read_excel(file_path))
+        else:
+            dfs.append(pd.read_csv(file_path))
+
+    return pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+
+
+@st.cache_data(show_spinner=False)
 def build_df_estado_heatmap(base_dir_str: str) -> pd.DataFrame:
     base_dir = Path(base_dir_str)
     delitos_dir_candidates = [
@@ -402,13 +431,138 @@ st.set_page_config(
     layout="wide"
 )
 
-st.image(
-    "https://play-lh.googleusercontent.com/CMVIb6hsKkX7-4wlAZMfVOzVFbg6zCAI3MJFXtRbARXRhZbWHDLAKNSNuCOuM1i1gQ=w240-h480-rw",
-    use_container_width=False
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background: radial-gradient(circle at 10% 5%, #f6f9fc 0%, #eef3f9 35%, #f7f9fc 100%);
+    }
+    .block-container {
+        padding-top: 2.8rem;
+        padding-bottom: 1.2rem;
+    }
+    .dashboard-hero {
+        background: #00296b;
+        border: 1px solid #00296b;
+        border-radius: 14px;
+        padding: 1rem 1.1rem 0.8rem 1.1rem;
+        margin-bottom: 0.9rem;
+        box-shadow: 0 10px 28px rgba(0, 41, 107, 0.22);
+    }
+    .dashboard-header {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+    .dashboard-logo {
+        width: 300px;
+        height: 300px;
+        object-fit: contain;
+        border-radius: 10px;
+        margin-top: -16px;
+    }
+    .dashboard-hero-wrap {
+        flex: 1;
+    }
+    .dashboard-hero h1 {
+        margin: 0;
+        color: #f8fafc;
+        font-size: 1.85rem;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+    }
+    .dashboard-hero p {
+        margin: 0.25rem 0 0 0;
+        color: #d1fae5;
+        font-size: 1.08rem;
+    }
+    .dashboard-hero .hero-description {
+        margin-top: 0.55rem;
+        color: #ecfeff;
+        font-size: 0.88rem;
+        line-height: 1.45;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 0.35rem;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background: transparent;
+        border-radius: 10px;
+        border: 1px solid #dbe4ee;
+        color: #0f172a;
+        padding: 0.45rem 0.75rem;
+    }
+    .stTabs [aria-selected="true"] {
+        background: #94bf43 !important;
+        color: #ffffff !important;
+        border-color: #94bf43 !important;
+    }
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
+        border-right: 1px solid #dbeafe;
+    }
+    [data-testid="stMetric"] {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 0.55rem 0.8rem;
+        box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    }
+    div[data-testid="stPlotlyChart"] {
+        background: #ffffff;
+        border: 1px solid #dbe4ee;
+        border-radius: 16px;
+        padding: 0.75rem 0.75rem 0.35rem 0.75rem;
+        margin-top: 0.45rem;
+        margin-bottom: 0.9rem;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+    div[data-testid="stPlotlyChart"] > div {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    [data-testid="stToggle"] {
+        margin-bottom: 0.35rem;
+    }
+    [data-testid="stToggle"] label {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.2rem !important;
+    }
+    [data-testid="stToggle"] p {
+        font-size: 1.02rem !important;
+        font-weight: 600 !important;
+        margin: 0.1rem 0 0 0 !important;
+        order: 2 !important;
+    }
+    [data-testid="stToggle"] div[role="switch"] {
+        transform: scale(1.2);
+        transform-origin: left center;
+        order: 1 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
-st.title("Dashboard de la Industria Farmacéutica")
-st.markdown('Explorando diferentes estrategias de mercado')
+st.markdown(
+    """
+    <div class="dashboard-header">
+      <img class="dashboard-logo" src="https://play-lh.googleusercontent.com/CMVIb6hsKkX7-4wlAZMfVOzVFbg6zCAI3MJFXtRbARXRhZbWHDLAKNSNuCOuM1i1gQ=w240-h480-rw" alt="logo">
+      <div class="dashboard-hero-wrap">
+        <div class="dashboard-hero">
+          <h1>CLCircular Strategic Intelligence Hub</h1>
+          <p>Pharma Industry Intelligence Platform</p>
+          <div class="hero-description">
+            Este dashboard proporciona una plataforma de inteligencia estratégica para la expansión de CLCircular en el mercado farmacéutico mexicano, integrando análisis de mercado, evaluación de alianzas con hubs logísticos, clústeres industriales y empresas de transporte, así como la identificación de ubicaciones óptimas para establecer un hub estratégico propio. El análisis se apoya en modelos SARIMA para proyecciones de mercado, segmentación mediante K-means y simulaciones Monte Carlo, permitiendo identificar oportunidades, riesgos y corredores logísticos clave dentro del ecosistema farmacéutico en México.
+          </div>
+        </div>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 tab_contexto, tab_exporta = st.tabs(["Contexto general", "¿Qué se exporta?"])
 
@@ -436,8 +590,6 @@ with tab_contexto:
         df_prog = df_mstj[df_mstj['Category'].isin(selected_categories)]
         df_usa = df_prog[df_prog['Geography'] == 'USA']
 
-        st.success("Datos cargados correctamente")
-
         st.sidebar.header("Filtros")
         view_mode = st.sidebar.radio(
             "Vista de gráfica",
@@ -460,50 +612,103 @@ with tab_contexto:
         with st.container():
             if view_mode == "Gráfica normal":
                 categories = sorted(df_usa_year_filtered['Category'].dropna().unique().tolist())
-                category_filter = st.multiselect(
-                    "Filtra categorías",
-                    options=categories,
-                    default=categories
-                )
-                df_usa_filtered = df_usa_year_filtered[df_usa_year_filtered['Category'].isin(category_filter)].sort_values(['Category', 'Year'])
+                df_usa_filtered = df_usa_year_filtered[df_usa_year_filtered['Category'].isin(categories)].sort_values(['Category', 'Year'])
 
                 if df_usa_filtered.empty:
                     st.warning("Selecciona al menos una categoría para mostrar la gráfica.")
                 else:
-                    fig = px.line(
-                        df_usa_filtered,
-                        x='Year',
-                        y='Value',
-                        color='Category',
-                        title='Tamaño del Mercado Farmacéutico Internacional',
-                        markers=True
-                    )
-                    share_normal_df = (
+                    yearly_totals = (
                         df_usa_filtered
-                        .groupby('Category', as_index=False)['Value']
+                        .groupby('Year', as_index=False)['Value']
                         .sum()
+                        .sort_values('Year')
                     )
+                    current_market_value = float(yearly_totals.iloc[-1]['Value'])
+                    first_year = int(yearly_totals.iloc[0]['Year'])
+                    last_year = int(yearly_totals.iloc[-1]['Year'])
+                    first_value = float(yearly_totals.iloc[0]['Value'])
+                    last_value = float(yearly_totals.iloc[-1]['Value'])
 
-                    fig_share_normal = px.pie(
-                        share_normal_df,
-                        names='Category',
-                        values='Value',
-                        hole=0.35,
-                        title=f'Share por Categoría ({year_filter[0]}-{year_filter[1]})'
+                    growth_display = "N/A"
+                    avg_growth_display = "N/A"
+                    growth_money_display = "N/A"
+                    avg_growth_money_display = "N/A"
+                    if first_value != 0:
+                        growth_pct = ((last_value - first_value) / first_value) * 100
+                        growth_display = f"{growth_pct:,.1f}%"
+                        growth_money_display = f"${(last_value - first_value):,.1f} M"
+                    year_span = max(last_year - first_year, 0)
+                    if first_value > 0 and last_value > 0 and year_span > 0:
+                        avg_growth_pct = ((last_value / first_value) ** (1 / year_span) - 1) * 100
+                        avg_growth_display = f"{avg_growth_pct:,.1f}%"
+                        avg_growth_money_display = f"${((last_value - first_value) / year_span):,.1f} M/año"
+
+                    kpi_ctx_1, kpi_ctx_2, kpi_ctx_3 = st.columns(3)
+                    with kpi_ctx_1:
+                        st.metric("Valor total mercado actual", f"${current_market_value:,.1f} M")
+                    with kpi_ctx_2:
+                        st.metric(
+                            f"Crecimiento % ({first_year}-{last_year})",
+                            growth_display
+                        )
+                        st.caption(f"Equivalente en dinero: {growth_money_display}")
+                    with kpi_ctx_3:
+                        st.metric("Crecimiento promedio anual", avg_growth_display)
+                        st.caption(f"Equivalente en dinero: {avg_growth_money_display}")
+
+                    category_filter = st.multiselect(
+                        "Filtra categorías",
+                        options=categories,
+                        default=categories
                     )
+                    df_usa_filtered = df_usa_year_filtered[
+                        df_usa_year_filtered['Category'].isin(category_filter)
+                    ].sort_values(['Category', 'Year'])
+                    if df_usa_filtered.empty:
+                        st.warning("Selecciona al menos una categoría para mostrar la gráfica.")
+                    else:
+                        fig = px.line(
+                            df_usa_filtered,
+                            x='Year',
+                            y='Value',
+                            color='Category',
+                            title='Tamaño de la industria Farmacéutica en U.S.A.',
+                            markers=True
+                        )
+                        share_normal_df = (
+                            df_usa_filtered
+                            .groupby('Category', as_index=False)['Value']
+                            .sum()
+                        )
 
-                    col_left, col_right = st.columns([2.2, 1.2])
-                    with col_left:
-                        st.plotly_chart(fig, use_container_width=True)
-                    with col_right:
-                        st.plotly_chart(fig_share_normal, use_container_width=True)
+                        fig_share_normal = px.pie(
+                            share_normal_df,
+                            names='Category',
+                            values='Value',
+                            hole=0.35,
+                            title=f'Share por Categoría ({year_filter[0]}-{year_filter[1]})'
+                        )
+
+                        col_left, col_right = st.columns([2.2, 1.2])
+                        with col_left:
+                            st.plotly_chart(fig, use_container_width=True)
+                        with col_right:
+                            st.plotly_chart(fig_share_normal, use_container_width=True)
             else:
+                kpi_sarima_placeholder = st.container()
                 sarima_filter = st.multiselect(
                     "Filtra categorías SARIMA",
                     options=sarima_categories,
-                    default=sarima_categories
+                    default=sarima_categories,
+                    key="sarima_filter_ctx"
                 )
-                forecast_steps = st.slider("Años de pronóstico (SARIMA)", min_value=1, max_value=10, value=5)
+                forecast_steps = st.slider(
+                    "Años de pronóstico (SARIMA)",
+                    min_value=1,
+                    max_value=10,
+                    value=5,
+                    key="forecast_steps_ctx"
+                )
                 series_data = []
                 color_map = {
                     'OTC': '#1f77b4',
@@ -558,6 +763,44 @@ with tab_contexto:
                 if not series_data:
                     st.error("No se pudo generar la gráfica SARIMA con las categorías seleccionadas.")
                 else:
+                    with kpi_sarima_placeholder:
+                        current_market_value = float(
+                            sum(observed_df['Value'].iloc[-1] for _, observed_df, _, _ in series_data if not observed_df.empty)
+                        )
+                        forecast_market_value = float(
+                            sum(forecast_df['Value'].iloc[-1] for _, _, forecast_df, _ in series_data if not forecast_df.empty)
+                        )
+
+                        growth_x_display = "N/A"
+                        annual_growth_display = "N/A"
+                        growth_x_money_display = "N/A"
+                        annual_growth_money_display = "N/A"
+
+                        if current_market_value != 0:
+                            growth_x_pct = ((forecast_market_value - current_market_value) / current_market_value) * 100
+                            growth_x_display = f"{growth_x_pct:,.1f}%"
+                            growth_x_money_display = f"${(forecast_market_value - current_market_value):,.1f} M"
+                        if current_market_value > 0 and forecast_market_value > 0 and forecast_steps > 0:
+                            annual_growth_pct = ((forecast_market_value / current_market_value) ** (1 / forecast_steps) - 1) * 100
+                            annual_growth_display = f"{annual_growth_pct:,.1f}%"
+                            annual_growth_money_display = f"${((forecast_market_value - current_market_value) / forecast_steps):,.1f} M/año"
+
+                        kpi_sar_1, kpi_sar_2, kpi_sar_3 = st.columns(3)
+                        with kpi_sar_1:
+                            st.metric(
+                                f"Valor de mercado en {forecast_steps} años",
+                                f"${forecast_market_value:,.1f} M"
+                            )
+                        with kpi_sar_2:
+                            st.metric(
+                                f"Crecimiento porcentual del mercado en {forecast_steps} años",
+                                growth_x_display
+                            )
+                            st.caption(f"Equivalente en dinero: {growth_x_money_display}")
+                        with kpi_sar_3:
+                            st.metric("Crecimiento porcentual anual", annual_growth_display)
+                            st.caption(f"Equivalente en dinero: {annual_growth_money_display}")
+
                     fig_sarima = go.Figure()
 
                     for category, observed_df, forecast_df, ci_df in series_data:
@@ -645,6 +888,7 @@ with tab_contexto:
 
         st.markdown("---")
         st.subheader("Valor Total por Subsegmento (USA)")
+        subsegment_kpi_placeholder = st.container()
 
         subsegment_categories = [
             'Adult Mouth Care', 'Analgesics', 'Sleep Aids',
@@ -678,8 +922,48 @@ with tab_contexto:
                 .sum()
                 .sort_values(['Category', 'Year'])
             )
+            df_subsegments_yearly = (
+                df_subsegments_trend
+                .groupby('Year', as_index=False)['Value']
+                .sum()
+                .sort_values('Year')
+            )
 
             if view_mode == "Gráfica normal":
+                current_subsegment_value = float(df_subsegments_yearly.iloc[-1]['Value'])
+                first_subsegment_year = int(df_subsegments_yearly.iloc[0]['Year'])
+                last_subsegment_year = int(df_subsegments_yearly.iloc[-1]['Year'])
+                first_subsegment_value = float(df_subsegments_yearly.iloc[0]['Value'])
+                last_subsegment_value = float(df_subsegments_yearly.iloc[-1]['Value'])
+
+                sub_growth_display = "N/A"
+                sub_growth_money_display = "N/A"
+                sub_annual_growth_display = "N/A"
+                sub_annual_growth_money_display = "N/A"
+                if first_subsegment_value != 0:
+                    sub_growth = ((last_subsegment_value - first_subsegment_value) / first_subsegment_value) * 100
+                    sub_growth_display = f"{sub_growth:,.1f}%"
+                    sub_growth_money_display = f"${(last_subsegment_value - first_subsegment_value):,.1f} M"
+                sub_year_span = max(last_subsegment_year - first_subsegment_year, 0)
+                if first_subsegment_value > 0 and last_subsegment_value > 0 and sub_year_span > 0:
+                    sub_annual_growth = ((last_subsegment_value / first_subsegment_value) ** (1 / sub_year_span) - 1) * 100
+                    sub_annual_growth_display = f"{sub_annual_growth:,.1f}%"
+                    sub_annual_growth_money_display = f"${((last_subsegment_value - first_subsegment_value) / sub_year_span):,.1f} M/año"
+
+                with subsegment_kpi_placeholder:
+                    kpi_sub_1, kpi_sub_2, kpi_sub_3 = st.columns(3)
+                    with kpi_sub_1:
+                        st.metric("Valor total subsegmento actual", f"${current_subsegment_value:,.1f} M")
+                    with kpi_sub_2:
+                        st.metric(
+                            f"Crecimiento % ({first_subsegment_year}-{last_subsegment_year})",
+                            sub_growth_display
+                        )
+                        st.caption(f"Equivalente en dinero: {sub_growth_money_display}")
+                    with kpi_sub_3:
+                        st.metric("Crecimiento promedio anual", sub_annual_growth_display)
+                        st.caption(f"Equivalente en dinero: {sub_annual_growth_money_display}")
+
                 fig_subsegments_trend = px.line(
                     df_subsegments_trend,
                     x='Year',
@@ -712,6 +996,7 @@ with tab_contexto:
                 palette = px.colors.qualitative.Plotly
                 fig_subsegments_sarima = go.Figure()
                 modeled_count = 0
+                sarima_subsegment_totals = []
 
                 for idx, category in enumerate(subsegment_filter):
                     if category not in subsegment_sarima_params:
@@ -784,6 +1069,9 @@ with tab_contexto:
                             showlegend=False,
                             legendgroup=category
                         ))
+                        current_value_cat = float(cat_df['Value'].iloc[-1])
+                        forecast_value_cat = float(forecast.values[-1])
+                        sarima_subsegment_totals.append((current_value_cat, forecast_value_cat))
                         modeled_count += 1
                     except Exception as sarima_error:
                         st.warning(f"No se pudo ajustar SARIMA para {category}: {sarima_error}")
@@ -791,6 +1079,38 @@ with tab_contexto:
                 if modeled_count == 0:
                     st.error("No se pudo generar la evolución SARIMA de subsegmentos con la selección actual.")
                 else:
+                    current_subsegment_value = float(sum(x[0] for x in sarima_subsegment_totals))
+                    forecast_subsegment_value = float(sum(x[1] for x in sarima_subsegment_totals))
+                    sub_growth_display = "N/A"
+                    sub_growth_money_display = "N/A"
+                    sub_annual_growth_display = "N/A"
+                    sub_annual_growth_money_display = "N/A"
+                    if current_subsegment_value != 0:
+                        sub_growth = ((forecast_subsegment_value - current_subsegment_value) / current_subsegment_value) * 100
+                        sub_growth_display = f"{sub_growth:,.1f}%"
+                        sub_growth_money_display = f"${(forecast_subsegment_value - current_subsegment_value):,.1f} M"
+                    if current_subsegment_value > 0 and forecast_subsegment_value > 0 and subsegment_forecast_steps > 0:
+                        sub_annual_growth = ((forecast_subsegment_value / current_subsegment_value) ** (1 / subsegment_forecast_steps) - 1) * 100
+                        sub_annual_growth_display = f"{sub_annual_growth:,.1f}%"
+                        sub_annual_growth_money_display = f"${((forecast_subsegment_value - current_subsegment_value) / subsegment_forecast_steps):,.1f} M/año"
+
+                    with subsegment_kpi_placeholder:
+                        kpi_sub_1, kpi_sub_2, kpi_sub_3 = st.columns(3)
+                        with kpi_sub_1:
+                            st.metric(
+                                f"Valor total subsegmento en {subsegment_forecast_steps} años",
+                                f"${forecast_subsegment_value:,.1f} M"
+                            )
+                        with kpi_sub_2:
+                            st.metric(
+                                f"Crecimiento % en {subsegment_forecast_steps} años",
+                                sub_growth_display
+                            )
+                            st.caption(f"Equivalente en dinero: {sub_growth_money_display}")
+                        with kpi_sub_3:
+                            st.metric("Crecimiento promedio anual", sub_annual_growth_display)
+                            st.caption(f"Equivalente en dinero: {sub_annual_growth_money_display}")
+
                     fig_subsegments_sarima.update_layout(
                         title='Evolución de Subsegmentos con Modelos SARIMA',
                         xaxis_title='Año',
@@ -840,6 +1160,8 @@ with tab_contexto:
             with col_tree:
                 st.plotly_chart(fig_subsegments_treemap, use_container_width=True)
 
+        st.success("Datos cargados correctamente")
+
     except Exception as e:
         st.error(f"Error al cargar los datos: {e}")
 
@@ -862,6 +1184,7 @@ with tab_exporta:
 
         us_imports = pd.read_excel(us_imports_path)
         em_int = pd.read_excel(em_int_path)
+        df_origin_exports = load_origin_exports(str(base_dir))
         df_estado_heat = build_df_estado_heatmap(str(base_dir))
         hubs_candidates = [
             resolve_data_file(base_dir, 'hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx'),
@@ -1108,7 +1431,9 @@ with tab_exporta:
         df_exports_filtered = df_exports_filtered.copy()
         if not df_exports_filtered.empty:
             df_exports_filtered['sector_multiplier'] = df_exports_filtered['HS2 4 Digit'].map(hs2_multiplier_map).fillna(0.0)
-            df_exports_filtered['Trade Value Ajustado'] = df_exports_filtered['Trade Value'] * df_exports_filtered['sector_multiplier']
+            df_exports_filtered['Trade Value Ajustado'] = (
+                df_exports_filtered['Trade Value'] * df_exports_filtered['sector_multiplier']
+            )
         else:
             df_exports_filtered = df_exports_filtered.assign(
                 sector_multiplier=pd.Series(dtype=float),
@@ -1167,7 +1492,7 @@ with tab_exporta:
 
             kpi_col_1, kpi_col_2, kpi_col_3 = st.columns(3)
             with kpi_col_1:
-                st.metric("Valor total exportado", f"${total_trade_value:,.0f}")
+                st.metric("Valor total exportado (MXN)", f"${total_trade_value:,.0f}")
             with kpi_col_2:
                 st.metric("Crecimiento % (inicio-fin)", growth_pct_display)
                 if growth_range_label:
@@ -1194,85 +1519,143 @@ with tab_exporta:
                 .sort_values('Trade Value Ajustado', ascending=False)
                 .head(15)
             )
+            hs2_short_map = {}
+            hs2_used_short = {}
+            for full_name in df_top_exports['HS2 4 Digit'].astype(str).tolist():
+                base_short = full_name if len(full_name) <= 24 else full_name[:24].rstrip() + "..."
+                count_short = hs2_used_short.get(base_short, 0) + 1
+                hs2_used_short[base_short] = count_short
+                short_name = base_short if count_short == 1 else f"{base_short} ({count_short})"
+                hs2_short_map[full_name] = short_name
+            df_top_exports['HS2 corto'] = df_top_exports['HS2 4 Digit'].map(hs2_short_map)
+            df_top_exports_plot = df_top_exports.sort_values('Trade Value Ajustado', ascending=False).copy()
             fig_exports = px.bar(
-                df_top_exports.sort_values('Trade Value Ajustado', ascending=True),
-                x='Trade Value Ajustado',
-                y='HS2 4 Digit',
-                orientation='h',
+                df_top_exports_plot,
+                x='HS2 corto',
+                y='Trade Value Ajustado',
                 title=f'Top exportaciones ({selected_export_year_range[0]}-{selected_export_year_range[1]})',
-                labels={'Trade Value Ajustado': 'Trade Value Ajustado', 'HS2 4 Digit': 'Producto HS2'},
+                labels={'Trade Value Ajustado': 'Trade Value', 'HS2 corto': 'Producto HS2'},
                 color='Trade Value Ajustado',
-                color_continuous_scale='Tealgrn',
-                custom_data=['HS4_hover']
+                color_continuous_scale=['#94bf43', '#7ab55f', '#5eb07b', '#3fa89a', '#0196b9'],
+                custom_data=['HS4_hover', 'HS2 4 Digit']
             )
-            df_top_exports_plot = df_top_exports.sort_values('Trade Value Ajustado', ascending=True).copy()
-            text_positions = [
-                'inside' if y == 'Aparatos Ópticos, Fotográficos, Técnicos, Médicos, Etc' else 'outside'
-                for y in df_top_exports_plot['HS2 4 Digit']
-            ]
             fig_exports.update_traces(
                 text=df_top_exports_plot['Trade Value Ajustado'].map(lambda x: f"${x:,.0f}"),
-                textposition=text_positions,
-                insidetextanchor='end',
-                hovertemplate="<b>%{y}</b><br>Trade Value: $%{x:,.0f}<br><br><b>HS4 4 Digit</b><br>%{customdata[0]}<extra></extra>"
+                textposition='outside',
+                hovertemplate="<b>%{customdata[1]}</b><br>Trade Value: $%{y:,.0f}<br><br><b>HS4 4 Digit</b><br>%{customdata[0]}<extra></extra>"
             )
-            fig_exports.update_xaxes(tickprefix="$", separatethousands=True)
-            fig_exports.update_layout(coloraxis_showscale=False, height=520, uniformtext_minsize=9, uniformtext_mode='hide')
-            st.plotly_chart(fig_exports, use_container_width=True)
+            fig_exports.update_yaxes(tickprefix="$", separatethousands=True)
+            fig_exports.update_xaxes(title='HS2 (abreviado)', tickangle=-30)
+            fig_exports.update_layout(
+                coloraxis_showscale=False,
+                height=620,
+                uniformtext_minsize=9,
+                uniformtext_mode='hide',
+                xaxis=dict(domain=[0.0, 0.9])
+            )
 
-            hs4_sources = []
-            if not df_exports_filtered.empty:
-                hs4_sources.append(df_exports_filtered[['Month', 'HS4 4 Digit', 'Trade Value Ajustado']].copy())
-            if not em_filtered.empty:
-                hs4_sources.append(em_filtered[['Month', 'HS4 4 Digit', 'Trade Value Ajustado']].copy())
-            if hs4_sources:
-                df_hs4_time = pd.concat(hs4_sources, ignore_index=True)
-                df_hs4_time = df_hs4_time.dropna(subset=['Month', 'HS4 4 Digit', 'Trade Value Ajustado'])
-                df_hs4_time['period'] = pd.to_datetime(df_hs4_time['Month'].astype(str) + '-01', errors='coerce')
-                df_hs4_time = df_hs4_time.dropna(subset=['period'])
+            fig_state_trend = None
+            if not df_origin_exports.empty and {'Year', 'Month', 'State', 'Trade Value'}.issubset(df_origin_exports.columns):
+                df_states_time = df_origin_exports.copy()
+                df_states_time['Year'] = pd.to_numeric(df_states_time['Year'], errors='coerce')
+                df_states_time = df_states_time[
+                    (df_states_time['Year'] >= selected_export_year_range[0]) &
+                    (df_states_time['Year'] <= selected_export_year_range[1])
+                ].copy()
+                df_states_time = df_states_time.dropna(subset=['Year', 'Month', 'State', 'Trade Value'])
+                df_states_time['State'] = df_states_time['State'].astype(str).str.strip()
+                df_states_time['state_key'] = df_states_time['State'].map(normalize_state_name)
+                df_states_time = df_states_time[df_states_time['state_key'].astype(str).str.len() > 0].copy()
 
-                top_hs4 = (
-                    df_hs4_time.groupby('HS4 4 Digit', as_index=False)['Trade Value Ajustado']
-                    .sum()
-                    .sort_values('Trade Value Ajustado', ascending=False)
-                    .head(6)['HS4 4 Digit']
-                    .tolist()
+                month_last2 = (
+                    df_states_time['Month']
+                    .astype(str)
+                    .str.strip()
+                    .str.extract(r'(\d{2})$')[0]
                 )
-                df_hs4_line = (
-                    df_hs4_time[df_hs4_time['HS4 4 Digit'].isin(top_hs4)]
-                    .groupby(['period', 'HS4 4 Digit'], as_index=False)['Trade Value Ajustado']
+                year_num = pd.to_numeric(df_states_time['Year'], errors='coerce')
+                month_num = pd.to_numeric(month_last2, errors='coerce')
+
+                period_from_parts = pd.to_datetime(
+                    {'year': year_num, 'month': month_num, 'day': 1},
+                    errors='coerce'
+                )
+                period_fallback = pd.to_datetime(df_states_time['Month'], errors='coerce')
+                df_states_time['period'] = period_from_parts.combine_first(period_fallback)
+                df_states_time = df_states_time.dropna(subset=['period'])
+                df_states_time['Trade Value'] = pd.to_numeric(df_states_time['Trade Value'], errors='coerce')
+                df_states_time = df_states_time.dropna(subset=['Trade Value'])
+
+                if 'selected_month_range' in locals():
+                    start_month, end_month = selected_month_range
+                    start_period = pd.to_datetime(f"{start_month}-01", errors='coerce')
+                    end_period = pd.to_datetime(f"{end_month}-01", errors='coerce')
+                    if pd.notna(start_period) and pd.notna(end_period):
+                        df_states_time = df_states_time[
+                            (df_states_time['period'] >= start_period) &
+                            (df_states_time['period'] <= end_period)
+                        ]
+
+                state_labels = (
+                    df_states_time
+                    .groupby('state_key', as_index=False)['State']
+                    .agg(lambda s: s.mode().iat[0] if not s.mode().empty else s.iloc[0])
+                    .rename(columns={'State': 'State_display'})
+                )
+                df_state_line = (
+                    df_states_time
+                    .groupby(['period', 'state_key'], as_index=False)['Trade Value']
                     .sum()
-                    .sort_values(['period', 'HS4 4 Digit'])
+                    .merge(state_labels, on='state_key', how='left')
+                    .sort_values(['period', 'state_key'])
                 )
 
-                if not df_hs4_line.empty:
-                    hs4_unique = df_hs4_line['HS4 4 Digit'].dropna().astype(str).unique().tolist()
-                    hs4_short_map = {}
-                    used_short = {}
-                    for full_name in hs4_unique:
-                        base_short = full_name if len(full_name) <= 42 else full_name[:42].rstrip() + "..."
-                        count_short = used_short.get(base_short, 0) + 1
-                        used_short[base_short] = count_short
+                if not df_state_line.empty:
+                    top_states = (
+                        df_state_line
+                        .groupby('state_key', as_index=False)['Trade Value']
+                        .sum()
+                        .sort_values('Trade Value', ascending=False)
+                        .head(5)['state_key']
+                        .tolist()
+                    )
+                    df_state_line = df_state_line[df_state_line['state_key'].isin(top_states)].copy()
+
+                    states_all = sorted(df_state_line['State_display'].dropna().astype(str).unique().tolist())
+                    state_short_map = {}
+                    state_used_short = {}
+                    for full_name in states_all:
+                        base_short = full_name if len(full_name) <= 18 else full_name[:18].rstrip() + "..."
+                        count_short = state_used_short.get(base_short, 0) + 1
+                        state_used_short[base_short] = count_short
                         short_name = base_short if count_short == 1 else f"{base_short} ({count_short})"
-                        hs4_short_map[full_name] = short_name
-                    df_hs4_line['HS4 corto'] = df_hs4_line['HS4 4 Digit'].map(hs4_short_map)
+                        state_short_map[full_name] = short_name
 
-                    fig_hs4_trend = px.line(
-                        df_hs4_line,
+                    df_state_line['State corto'] = df_state_line['State_display'].map(state_short_map).fillna(df_state_line['State_display'])
+
+                    fig_state_trend = px.line(
+                        df_state_line,
                         x='period',
-                        y='Trade Value Ajustado',
-                        color='HS4 corto',
+                        y='Trade Value',
+                        color='State corto',
                         markers=True,
-                        title='Evolución temporal de HS4 con mayor valor'
+                        title='Evolución mensual por estado'
                     )
-                    fig_hs4_trend.update_traces(
-                        customdata=df_hs4_line[['HS4 4 Digit']],
-                        hovertemplate="<b>%{customdata[0]}</b><br>Mes: %{x|%Y-%m}<br>Trade Value: $%{y:,.0f}<extra></extra>"
+                    fig_state_trend.update_traces(
+                        hovertemplate="Periodo: %{x|%Y-%m}<br>Trade Value: $%{y:,.0f}<extra></extra>"
                     )
-                    fig_hs4_trend.update_yaxes(tickprefix="$", separatethousands=True)
-                    fig_hs4_trend.update_xaxes(title='Mes')
-                    fig_hs4_trend.update_layout(height=620, legend_title_text='HS4 (abreviado)')
-                    st.plotly_chart(fig_hs4_trend, use_container_width=True)
+                    fig_state_trend.update_yaxes(tickprefix="$", separatethousands=True)
+                    fig_state_trend.update_xaxes(title='Periodo (Year + MM de Month)', type='date')
+                    fig_state_trend.update_layout(height=620, legend_title_text='Estado (abreviado)')
+
+            col_exports_line, col_exports_bar = st.columns([1.65, 1.0], gap="small")
+            with col_exports_line:
+                if fig_state_trend is not None:
+                    st.plotly_chart(fig_state_trend, use_container_width=True)
+                else:
+                    st.info("No hay datos suficientes para la evolución mensual por estado.")
+            with col_exports_bar:
+                st.plotly_chart(fig_exports, use_container_width=True)
 
             sectors_from_hs2 = {
                 sector
@@ -1462,6 +1845,12 @@ with tab_exporta:
             if not plantas_map.empty:
                 map_col_control, map_col_plot = st.columns([0.16, 0.84], gap="small")
                 with map_col_control:
+                    def map_toggle_spacer(height_rem: float = 5.2):
+                        st.markdown(
+                            f"<div style='height:{height_rem}rem;'></div>",
+                            unsafe_allow_html=True
+                        )
+
                     show_risk_heat_layer = st.toggle(
                         "Mapa de calor (riesgo)",
                         value=True,
@@ -1469,16 +1858,19 @@ with tab_exporta:
                     )
                     if show_risk_heat_layer and df_estado_heat.empty:
                         st.caption("Sin datos de riesgo: revisa carpeta Municipal-Delitos-2015-2025_ene2026")
+                    map_toggle_spacer()
                     show_empresas_plantas_points = st.toggle(
                         "Mostrar empresas y plantas",
                         value=True,
                         key="show_empresas_plantas_points_map"
                     )
+                    map_toggle_spacer()
                     show_hubs_points = st.toggle(
                         "Mostrar hubs",
                         value=True,
                         key="show_hubs_points_map"
                     )
+                    map_toggle_spacer()
                     show_el_mexico_points = st.toggle(
                         "Distribuidores estratégicos",
                         value=True,
@@ -1697,7 +2089,7 @@ with tab_exporta:
                     ))
 
                 fig_mexico_map.update_layout(
-                    title='Bubble Map en México (plantas_20 + plantas_80 + hubs + EL México)'
+                    title='Mapa estratégico'
                 )
                 fig_mexico_map.update_geos(
                     scope='north america',
@@ -1725,15 +2117,15 @@ with tab_exporta:
                 )
                 with map_col_plot:
                     st.plotly_chart(fig_mexico_map, use_container_width=True)
-                    if strategic_risk is not None:
-                        st.caption("Pronóstico Monte Carlo del punto estratégico")
-                        mc1, mc2, mc3 = st.columns(3)
-                        with mc1:
-                            st.metric("Calificación promedio", f"{strategic_risk['Calificación Promedio']:.2f}")
-                        with mc2:
-                            st.metric("Riesgo (desviación)", f"{strategic_risk['Riesgo (Desviación)']:.2f}")
-                        with mc3:
-                            st.metric("P95 pesimista", f"{strategic_risk['P95 (Escenario Pesimista)']:.2f}")
+                if strategic_risk is not None:
+                    st.caption("Pronóstico Monte Carlo del punto estratégico")
+                    mc1, mc2, mc3 = st.columns([1, 1, 1], gap="large")
+                    with mc1:
+                        st.metric("Calificación promedio", f"{strategic_risk['Calificación Promedio']:.2f}")
+                    with mc2:
+                        st.metric("Riesgo (desviación)", f"{strategic_risk['Riesgo (Desviación)']:.2f}")
+                    with mc3:
+                        st.metric("P95 pesimista", f"{strategic_risk['P95 (Escenario Pesimista)']:.2f}")
 
             col_tab_1, col_tab_2 = st.columns([1.4, 1.1], gap="small")
             with col_tab_1:
@@ -1751,7 +2143,7 @@ with tab_exporta:
                         .sort_values(['Year', 'Month', 'HS2 4 Digit', 'HS4 4 Digit'])
                     )
                 else:
-                    df_left_table = pd.DataFrame(columns=left_cols)
+                    df_left_table = pd.DataFrame(columns=['Year', 'Month', 'HS2 4 Digit', 'HS4 4 Digit', 'Trade Value', 'Share'])
 
                 st.dataframe(
                     df_left_table,
