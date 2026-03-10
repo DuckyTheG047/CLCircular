@@ -1347,6 +1347,74 @@ with tab_exporta:
             ["Todo", "Región Norte", "Región Sur", "Región Golfo", "Región Centro"],
             key="selected_region_cluster"
         )
+
+        region_states_map = {
+            "Región Norte": [
+                "Baja California", "Baja California Sur", "Sonora", "Chihuahua",
+                "Coahuila", "Nuevo León", "Durango", "Sinaloa"
+            ],
+            "Región Sur": [
+                "Chiapas", "Oaxaca", "Guerrero", "Puebla"
+            ],
+            "Región Golfo": [
+                "Tamaulipas", "Veracruz", "Tabasco", "Campeche", "Yucatán", "Quintana Roo"
+            ],
+            "Región Centro": [
+                "Aguascalientes", "Ciudad de México", "Estado de México", "Guanajuato",
+                "Hidalgo", "Jalisco", "Michoacán", "Morelos", "Querétaro",
+                "San Luis Potosí", "Tlaxcala", "Zacatecas", "Colima", "Nayarit"
+            ]
+        }
+        region_state_keys_map = {
+            region: {normalize_state_name(state) for state in states}
+            for region, states in region_states_map.items()
+        }
+
+        state_catalog = pd.DataFrame(columns=['state_key', 'State_display'])
+        if not df_origin_exports.empty and 'State' in df_origin_exports.columns:
+            state_catalog = (
+                df_origin_exports[['State']]
+                .dropna()
+                .assign(
+                    State=lambda d: d['State'].astype(str).str.strip(),
+                    state_key=lambda d: d['State'].map(normalize_state_name)
+                )
+            )
+            state_catalog = state_catalog[state_catalog['state_key'].astype(str).str.len() > 0]
+            state_catalog = (
+                state_catalog
+                .groupby('state_key', as_index=False)['State']
+                .agg(lambda s: s.mode().iat[0] if not s.mode().empty else s.iloc[0])
+                .rename(columns={'State': 'State_display'})
+            )
+
+        available_state_keys = set(state_catalog['state_key'].tolist())
+        if selected_region_cluster != "Todo":
+            allowed_state_keys_region = available_state_keys.intersection(
+                region_state_keys_map.get(selected_region_cluster, set())
+            )
+        else:
+            allowed_state_keys_region = available_state_keys
+
+        state_options = (
+            state_catalog[state_catalog['state_key'].isin(allowed_state_keys_region)]
+            .sort_values('State_display')['State_display']
+            .tolist()
+        )
+        selected_states = st.sidebar.multiselect(
+            "Estados",
+            options=["Todos"] + state_options,
+            default=["Todos"],
+            key="selected_export_states"
+        )
+        if (not selected_states) or ("Todos" in selected_states):
+            selected_states_effective = state_options
+        else:
+            selected_states_effective = selected_states
+        selected_state_keys_effective = set(
+            state_catalog[state_catalog['State_display'].isin(selected_states_effective)]['state_key'].tolist()
+        )
+
         if (not selected_export_hs2) or ("Todos" in selected_export_hs2):
             selected_export_hs2 = export_hs2
         if (not selected_sectores) or ("Todos" in selected_sectores):
@@ -1598,6 +1666,11 @@ with tab_exporta:
                 df_states_time['State'] = df_states_time['State'].astype(str).str.strip()
                 df_states_time['state_key'] = df_states_time['State'].map(normalize_state_name)
                 df_states_time = df_states_time[df_states_time['state_key'].astype(str).str.len() > 0].copy()
+                if selected_region_cluster != "Todo":
+                    region_keys = region_state_keys_map.get(selected_region_cluster, set())
+                    df_states_time = df_states_time[df_states_time['state_key'].isin(region_keys)].copy()
+                if selected_state_keys_effective:
+                    df_states_time = df_states_time[df_states_time['state_key'].isin(selected_state_keys_effective)].copy()
 
                 month_last2 = (
                     df_states_time['Month']
@@ -1804,6 +1877,49 @@ with tab_exporta:
 
             empresas_share_table['share_aprox_pct'] = empresas_share_table['share_aprox_pct'].map(
                 lambda x: f"{x:.1f}%" if pd.notna(x) else ""
+            )
+
+            extra_org_rows = []
+            if not df_hubs.empty and 'nombre' in df_hubs.columns:
+                hubs_urls = (
+                    df_hubs['url_source']
+                    if 'url_source' in df_hubs.columns
+                    else pd.Series([""] * len(df_hubs))
+                )
+                hubs_extra = pd.DataFrame({
+                    'empresa': df_hubs['nombre'].astype(str),
+                    'share_aprox_pct': '-',
+                    'url_source': hubs_urls.astype(str)
+                })
+                extra_org_rows.append(hubs_extra)
+            if not df_el_mexico.empty and 'empresa' in df_el_mexico.columns:
+                el_urls = (
+                    df_el_mexico['url_source']
+                    if 'url_source' in df_el_mexico.columns
+                    else pd.Series([""] * len(df_el_mexico))
+                )
+                el_extra = pd.DataFrame({
+                    'empresa': df_el_mexico['empresa'].astype(str),
+                    'share_aprox_pct': '-',
+                    'url_source': el_urls.astype(str)
+                })
+                extra_org_rows.append(el_extra)
+            if extra_org_rows:
+                extra_org_table = pd.concat(extra_org_rows, ignore_index=True)
+                extra_org_table = extra_org_table.dropna(subset=['empresa']).copy()
+                extra_org_table['empresa'] = extra_org_table['empresa'].astype(str).str.strip()
+                extra_org_table = extra_org_table[extra_org_table['empresa'].str.len() > 0]
+                empresas_share_table = pd.concat([empresas_share_table, extra_org_table], ignore_index=True)
+
+            empresas_share_table['url_source'] = empresas_share_table['url_source'].fillna('').astype(str)
+            empresas_share_table['share_priority'] = np.where(
+                empresas_share_table['share_aprox_pct'].astype(str).str.contains('%', na=False), 0, 1
+            )
+            empresas_share_table = (
+                empresas_share_table
+                .sort_values(['empresa', 'share_priority'], ascending=[True, True])
+                .drop_duplicates(subset=['empresa'], keep='first')
+                .drop(columns=['share_priority'])
             )
 
             plantas_80 = plantas_80[['empresa', 'planta_ciudad_aprox', 'estado', 'latitud_aprox', 'longitud_aprox']].copy()
@@ -2185,8 +2301,11 @@ with tab_exporta:
                     hide_index=True
                 )
             with col_tab_2:
+                empresas_share_table_right = empresas_share_table[
+                    empresas_share_table['url_source'].astype(str).str.strip().ne('')
+                ].copy()
                 st.dataframe(
-                    empresas_share_table[['empresa', 'share_aprox_pct', 'url_source']],
+                    empresas_share_table_right[['empresa', 'share_aprox_pct', 'url_source']].rename(columns={'url_source': 'url'}),
                     use_container_width=True,
                     hide_index=True
                 )
