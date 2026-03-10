@@ -31,6 +31,9 @@ import openpyxl
 import os
 import streamlit as st
 import plotly.express as px
+import glob
+from sklearn.tree import DecisionTreeRegressor
+import plotly.graph_objects as go
 
 ### Carga Data Market Size Categorías
 df_mst = pd.read_excel('CLCircular - Datos/Code/db1_internacional_pharma.xlsx', 'Mkt.Size', header = 5)
@@ -785,3 +788,470 @@ market_share_empresas_raw = [
 
 market_share_total = sum(market_share_empresas_raw)
 market_share_empresas = [value * (100.0 / market_share_total) for value in market_share_empresas_raw]
+
+df_hubs = pd.read_excel('/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/hubs_y_organizaciones_adicionales_farmaceuticas_mexico_urls.xlsx')
+df_hubs
+
+df_el_mexico = pd.DataFrame([
+    {"empresa":"World Courier","hub_mexico":"Tlalnepantla (Estado de México)","latitud":19.5407,"longitud":-99.1950},
+    {"empresa":"Biocair","hub_mexico":"Ciudad de México","latitud":19.4326,"longitud":-99.1332},
+    {"empresa":"Marken","hub_mexico":"Ciudad de México","latitud":19.4326,"longitud":-99.1332},
+    {"empresa":"Cryoport","hub_mexico":"Guadalajara","latitud":20.6597,"longitud":-103.3496},
+    {"empresa":"Movianto","hub_mexico":"Ciudad de México","latitud":19.4326,"longitud":-99.1332},
+    {"empresa":"Bomi Group","hub_mexico":"Querétaro","latitud":20.5888,"longitud":-100.3899},
+    {"empresa":"FIEGE Pharma Logistics","hub_mexico":"Monterrey","latitud":25.6866,"longitud":-100.3161},
+    {"empresa":"JAS Worldwide","hub_mexico":"Guadalajara","latitud":20.6597,"longitud":-103.3496},
+    {"empresa":"GEODIS Pharma Healthcare","hub_mexico":"Guadalajara","latitud":20.6597,"longitud":-103.3496},
+    {"empresa":"Almac Group","hub_mexico":"Ciudad de México","latitud":19.4326,"longitud":-99.1332}
+])
+
+print(df_el_mexico)
+
+files = [
+'/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2015.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2016.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2017.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2018.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2019.xlsx',
+'/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2020.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2021.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2022.xlsx','/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2023.xlsx',
+'/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2024_ene2026.xlsx', '/Users/patoescamilla/Desktop/Files/Python/CLCircular - Datos/Municipal-Delitos-2015-2025_ene2026/2025_ene2026.xlsx'
+]
+
+dfs = []
+
+for f in files:
+    df = pd.read_excel(f)
+    df["source_file"] = f
+    dfs.append(df)
+
+combined = pd.concat(dfs, ignore_index=True)
+
+combined
+
+
+
+tipos_objetivo = [
+    "Homicidio",
+    "Narcomenudeo",
+    "Trata de personas"
+]
+
+# 2) Subtipos de delito directos (sin depender de modalidad)
+subtipos_directos = [
+    "Robo a negocio",
+    "Robo de maquinaria",
+    "Robo a transportista",
+    "Extorsión",
+]
+
+# 3) Normalización para evitar problemas de mayúsculas/espacios
+tipo_s = combined["Tipo de delito"].astype(str).str.strip().str.casefold()
+subtipo_s = combined["Subtipo de delito"].astype(str).str.strip().str.casefold()
+modalidad_s = combined["Modalidad"].astype(str).str.strip().str.casefold()
+
+tipos_objetivo_s = [t.casefold() for t in tipos_objetivo]
+subtipos_directos_s = [s.casefold() for s in subtipos_directos]
+
+# 4) Máscaras por reglas solicitadas
+mask_tipos = tipo_s.isin(tipos_objetivo_s)
+
+# Robo a negocio (con y sin violencia)
+mask_robo_negocio = (
+    (subtipo_s == "robo a negocio".casefold()) &
+    modalidad_s.isin(["con violencia".casefold(), "sin violencia".casefold()])
+)
+
+# Extorsión, Fraude, Daño a la propiedad
+mask_subtipos_directos = subtipo_s.isin(subtipos_directos_s)
+
+# Robo de maquinaria -> Modalidad: Robo de herramienta industrial o agrícola (con/sin violencia)
+mask_robo_maquinaria = (
+    (subtipo_s == "robo de maquinaria".casefold()) &
+    modalidad_s.isin([
+        "robo de herramienta industrial o agrícola con violencia".casefold(),
+        "robo de herramienta industrial o agrícola sin violencia".casefold()
+    ])
+)
+
+# Robo a transportista (con/sin violencia)
+mask_robo_transportista = (
+    (subtipo_s == "robo a transportista".casefold()) &
+    modalidad_s.isin(["con violencia".casefold(), "sin violencia".casefold()])
+)
+
+# 5) Filtro final
+mask_final = (
+    mask_tipos |
+    mask_robo_negocio |
+    mask_subtipos_directos |
+    mask_robo_maquinaria |
+    mask_robo_transportista
+)
+
+df_delitos_objetivo = combined.loc[mask_final].copy()
+
+# (Opcional) ver tamaño y primeras filas
+print(df_delitos_objetivo.shape)
+df_delitos_objetivo.head()
+
+df_delitos_objetivo['Subtipo de delito'].unique()
+
+# Suma anual (enero-diciembre) por registro
+meses = [
+    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+]
+
+df_plot_estado = df_delitos_objetivo.copy()
+df_plot_estado[meses] = df_plot_estado[meses].apply(pd.to_numeric, errors="coerce").fillna(0)
+df_plot_estado["Total_delitos"] = df_plot_estado[meses].sum(axis=1)
+
+# Agregado por estado
+pie_estado = (
+    df_plot_estado
+    .groupby("Entidad", as_index=False)["Total_delitos"]
+    .sum()
+    .sort_values("Total_delitos", ascending=False)
+)
+
+# Pie chart
+fig = px.pie(
+    pie_estado,
+    names="Entidad",
+    values="Total_delitos",
+    title="Participación de delitos objetivo por estado"
+)
+fig.update_traces(textinfo="percent+label")
+fig.show()
+
+
+ultimo_anio = int(df_delitos_objetivo["Año"].max())
+anio_inicio = ultimo_anio - 4
+
+df_5y = df_delitos_objetivo[
+    (df_delitos_objetivo["Año"] >= anio_inicio) &
+    (df_delitos_objetivo["Año"] <= ultimo_anio)
+].copy()
+
+meses = [
+    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+]
+
+df_5y[meses] = df_5y[meses].apply(pd.to_numeric, errors="coerce").fillna(0)
+df_5y["Total_delitos"] = df_5y[meses].sum(axis=1)
+
+pie_estado_5y = (
+    df_5y
+    .groupby("Entidad", as_index=False)["Total_delitos"]
+    .sum()
+    .sort_values("Total_delitos", ascending=False)
+)
+
+fig = px.pie(
+    pie_estado_5y,
+    names="Entidad",
+    values="Total_delitos",
+    title=f"Participación por estado (últimos 5 años: {anio_inicio}-{ultimo_anio})"
+)
+fig.update_traces(textinfo="percent+label")
+fig.show()
+
+
+
+# Base
+df_tipos = df_delitos_objetivo.copy()
+
+# Suma anual por registro
+meses = [
+    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+]
+df_tipos[meses] = df_tipos[meses].apply(pd.to_numeric, errors="coerce").fillna(0)
+df_tipos["Total_delitos"] = df_tipos[meses].sum(axis=1)
+
+# Agregado nacional por tipo de delito
+participacion_tipo = (
+    df_tipos
+    .groupby("Tipo de delito", as_index=False)["Total_delitos"]
+    .sum()
+    .sort_values("Total_delitos", ascending=False)
+)
+
+# Participación (%) opcional en tabla
+participacion_tipo["Participacion_%"] = (
+    participacion_tipo["Total_delitos"] / participacion_tipo["Total_delitos"].sum() * 100
+)
+
+print(participacion_tipo)
+
+# Gráfica de participación por tipo
+fig = px.pie(
+    participacion_tipo,
+    names="Tipo de delito",
+    values="Total_delitos",
+    title="Participación de cada tipo de delito en México"
+)
+fig.update_traces(textinfo="percent+label")
+fig.show()
+
+
+
+df_estado = df_delitos_objetivo.copy()
+
+meses = [
+    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+]
+
+# Total anual por registro
+df_estado[meses] = df_estado[meses].apply(pd.to_numeric, errors="coerce").fillna(0)
+df_estado["Total_anual_registro"] = df_estado[meses].sum(axis=1)
+
+# Total por estado y año
+estado_anio = (
+    df_estado
+    .groupby(["Entidad", "Año"], as_index=False)["Total_anual_registro"]
+    .sum()
+)
+
+# Promedio anual por estado (promedio entre años)
+pie_estado_promedio = (
+    estado_anio
+    .groupby("Entidad", as_index=False)["Total_anual_registro"]
+    .mean()
+    .rename(columns={"Total_anual_registro": "Promedio_anual_delitos"})
+    .sort_values("Promedio_anual_delitos", ascending=False)
+)
+
+fig = px.pie(
+    pie_estado_promedio,
+    names="Entidad",
+    values="Promedio_anual_delitos",
+    title="Participación por estado (promedio anual)"
+)
+fig.update_traces(textinfo="percent+label")
+fig.show()
+
+# Quitar filas de la entidad "México" y "Ciudad de México"
+df_sin_mx_cdmx = df_delitos_objetivo[
+    ~df_delitos_objetivo["Entidad"].astype(str).str.strip().isin(["México", "Ciudad de México"])
+].copy()
+
+# Verificación rápida
+print(df_sin_mx_cdmx["Entidad"].unique())
+
+# Usa el nuevo dataframe sin México y CDMX
+df_estado = df_sin_mx_cdmx.copy()
+
+meses = [
+    "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+    "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
+]
+
+# Total anual por registro
+df_estado[meses] = df_estado[meses].apply(pd.to_numeric, errors="coerce").fillna(0)
+df_estado["Total_anual_registro"] = df_estado[meses].sum(axis=1)
+
+# Total por estado y año
+estado_anio = (
+    df_estado
+    .groupby(["Entidad", "Año"], as_index=False)["Total_anual_registro"]
+    .sum()
+)
+
+# Promedio anual por estado
+pie_estado_promedio = (
+    estado_anio
+    .groupby("Entidad", as_index=False)["Total_anual_registro"]
+    .mean()
+    .rename(columns={"Total_anual_registro": "Promedio_anual_delitos"})
+    .sort_values("Promedio_anual_delitos", ascending=False)
+)
+
+fig = px.pie(
+    pie_estado_promedio,
+    names="Entidad",
+    values="Promedio_anual_delitos",
+    title="Participación por estado (promedio anual, sin México y CDMX)"
+)
+fig.update_traces(textinfo="percent+label")
+fig.show()
+
+df_estado['Entidad'].unique()
+
+
+# ============================================
+# Punto estratégico con Decision Tree Regressor
+# ============================================
+
+
+
+def haversine_km(lat1, lon1, lat2, lon2):
+    r = 6371.0
+    lat1_r, lon1_r, lat2_r, lon2_r = map(np.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2_r - lat1_r
+    dlon = lon2_r - lon1_r
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(lat1_r) * np.cos(lat2_r) * np.sin(dlon / 2.0) ** 2
+    return 2 * r * np.arcsin(np.sqrt(a))
+
+
+def nearest_distance_km(lat, lon, points_df):
+    if points_df.empty:
+        return np.inf
+    dists = haversine_km(lat, lon, points_df["lat"].values, points_df["lon"].values)
+    return float(np.nanmin(dists))
+
+
+# 1) Fuentes geográficas
+plants_80_geo = plantas_80[["empresa", "estado", "latitud_aprox", "longitud_aprox"]].rename(
+    columns={"latitud_aprox": "lat", "longitud_aprox": "lon"}
+).dropna(subset=["lat", "lon"])
+plants_20_geo = plantas_20[["empresa", "estado", "latitud_aprox", "longitud_aprox"]].rename(
+    columns={"latitud_aprox": "lat", "longitud_aprox": "lon"}
+).dropna(subset=["lat", "lon"])
+plants_geo = pd.concat([plants_80_geo, plants_20_geo], ignore_index=True).drop_duplicates()
+
+hubs_geo = df_hubs[["nombre", "estado", "latitud", "longitud"]].rename(
+    columns={"nombre": "empresa", "latitud": "lat", "longitud": "lon"}
+).dropna(subset=["lat", "lon"])
+
+dist_geo = df_el_mexico[["empresa", "hub_mexico", "latitud", "longitud"]].rename(
+    columns={"hub_mexico": "estado", "latitud": "lat", "longitud": "lon"}
+).dropna(subset=["lat", "lon"])
+
+# 2) Riesgo por estado (promedio anual de delitos)
+risk_df = pie_estado_promedio.copy()
+risk_df["estado"] = risk_df["Entidad"].astype(str).str.strip()
+risk_df["risk_base"] = pd.to_numeric(risk_df["Promedio_anual_delitos"], errors="coerce").fillna(0.0)
+
+# Multiplicadores de riesgo solicitados
+risk_multiplier = {
+    "Guanajuato": 2.5,
+    "Baja California": 2.5,
+    "Michoacán de Ocampo": 3.4,
+    "Jalisco": 1.9,
+    "Chihuahua": 2.5,
+    "Sonora": 3.4,
+    "Guerrero": 2.5,
+    "Zacatecas": 2.5,
+    "Colima": 2.5,
+    "Sinaloa": 3.0
+}
+risk_df["multiplier"] = risk_df["estado"].map(risk_multiplier).fillna(1.0)
+risk_df["risk_weighted"] = risk_df["risk_base"] * risk_df["multiplier"]
+
+# Coordenadas por estado para capa de riesgo (basadas en plantas/hubs/distribuidores + Sinaloa fijo)
+state_points = pd.concat([
+    plants_geo[["estado", "lat", "lon"]],
+    hubs_geo[["estado", "lat", "lon"]],
+], ignore_index=True)
+state_centroids = (
+    state_points.dropna(subset=["estado"])
+    .groupby("estado", as_index=False)[["lat", "lon"]]
+    .mean()
+)
+
+# Coordenada fija para Sinaloa
+state_centroids = pd.concat([
+    state_centroids[state_centroids["estado"] != "Sinaloa"],
+    pd.DataFrame([{"estado": "Sinaloa", "lat": 25.1721, "lon": -107.4795}])
+], ignore_index=True)
+
+risk_points = state_centroids.merge(
+    risk_df[["estado", "risk_weighted"]],
+    on="estado",
+    how="inner"
+).dropna(subset=["risk_weighted"])
+
+# 3) Malla de candidatos (México aprox)
+lat_grid = np.linspace(14.5, 32.5, 70)
+lon_grid = np.linspace(-117.0, -86.0, 90)
+candidates = pd.DataFrame(
+    [(la, lo) for la in lat_grid for lo in lon_grid],
+    columns=["lat", "lon"]
+)
+
+# 4) Feature engineering y función objetivo
+features = []
+targets = []
+for _, row in candidates.iterrows():
+    lat, lon = row["lat"], row["lon"]
+
+    d_plants = nearest_distance_km(lat, lon, plants_geo)
+    d_hubs = nearest_distance_km(lat, lon, hubs_geo)
+    d_dist = nearest_distance_km(lat, lon, dist_geo)
+
+    if risk_points.empty:
+        risk_penalty = 0.0
+    else:
+        d_risk = haversine_km(lat, lon, risk_points["lat"].values, risk_points["lon"].values)
+        # Peso inverso a distancia para penalizar cercanía a estados de riesgo
+        risk_penalty = float(np.sum(risk_points["risk_weighted"].values / (d_risk + 25.0)))
+
+    prox_plants = np.exp(-d_plants / 220.0)
+    prox_hubs = np.exp(-d_hubs / 250.0)
+    prox_dist = np.exp(-d_dist / 250.0)
+
+    score = (0.45 * prox_plants) + (0.25 * prox_hubs) + (0.20 * prox_dist) - (0.75 * risk_penalty)
+
+    features.append([lat, lon, d_plants, d_hubs, d_dist, risk_penalty])
+    targets.append(score)
+
+X = pd.DataFrame(features, columns=["lat", "lon", "d_plants", "d_hubs", "d_dist", "risk_penalty"])
+y = np.array(targets)
+
+# 5) Modelo Decision Tree
+tree = DecisionTreeRegressor(
+    max_depth=8,
+    min_samples_leaf=25,
+    random_state=42
+)
+tree.fit(X, y)
+candidates["pred_score"] = tree.predict(X)
+
+best_idx = candidates["pred_score"].idxmax()
+best_point = candidates.loc[best_idx, ["lat", "lon", "pred_score"]]
+
+print("PUNTO ESTRATEGICO RECOMENDADO")
+print(best_point)
+
+# 6) Visualización rápida
+fig_strategy = go.Figure()
+fig_strategy.add_trace(go.Scattergeo(
+    lat=plants_geo["lat"],
+    lon=plants_geo["lon"],
+    mode="markers",
+    marker=dict(size=5, color="#4b5563", opacity=0.55),
+    name="Plantas"
+))
+fig_strategy.add_trace(go.Scattergeo(
+    lat=hubs_geo["lat"],
+    lon=hubs_geo["lon"],
+    mode="markers",
+    marker=dict(size=8, color="#2563eb", opacity=0.8),
+    name="Hubs"
+))
+fig_strategy.add_trace(go.Scattergeo(
+    lat=dist_geo["lat"],
+    lon=dist_geo["lon"],
+    mode="markers",
+    marker=dict(size=8, color="#f59e0b", opacity=0.8),
+    name="Distribuidores"
+))
+fig_strategy.add_trace(go.Scattergeo(
+    lat=[best_point["lat"]],
+    lon=[best_point["lon"]],
+    mode="markers",
+    marker=dict(size=14, color="#16a34a", symbol="star"),
+    name="Punto estratégico"
+))
+fig_strategy.update_geos(
+    scope="north america",
+    lataxis_range=[14, 33],
+    lonaxis_range=[-119, -86],
+    showcountries=True,
+    showcoastlines=True,
+    showsubunits=True
+)
+fig_strategy.update_layout(
+    title="Decision Tree - Punto estratégico sugerido",
+    height=650
+)
+fig_strategy.show()
