@@ -535,14 +535,14 @@ st.markdown(
     }
     [data-testid="stMetric"] {
         background: #ffffff;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #e9ba2c;
         border-radius: 12px;
         padding: 0.55rem 0.8rem;
         box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
     }
     div[data-testid="stPlotlyChart"] {
         background: #ffffff;
-        border: 1px solid #dbe4ee;
+        border: 1px solid #0196b9;
         border-radius: 16px;
         padding: 0.75rem 0.75rem 0.35rem 0.75rem;
         margin-top: 0.45rem;
