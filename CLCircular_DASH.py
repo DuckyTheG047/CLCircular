@@ -544,14 +544,16 @@ st.markdown(
         background: #ffffff;
         border: 1px solid #0196b9;
         border-radius: 16px;
-        padding: 0.75rem 0.75rem 0.35rem 0.75rem;
+        padding: 0.75rem;
         margin-top: 0.45rem;
         margin-bottom: 0.9rem;
         box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
     }
     div[data-testid="stPlotlyChart"] > div {
         border-radius: 12px;
         overflow: hidden;
+        margin-bottom: 0 !important;
     }
     [data-testid="stToggle"] {
         margin-bottom: 0.35rem;
